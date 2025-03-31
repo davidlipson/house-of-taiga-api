@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Bin } from './entities/bin.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager } from 'typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class BinService {
@@ -12,16 +12,19 @@ export class BinService {
     private readonly binRepository: Repository<Bin>,
   ) {}
 
-  async assignBin(entityTransactionManager: EntityManager) {
+  async assignBin(): Promise<Bin> {
     // find available bin, for now just return first bin
     this.logger.log('Finding available bin...');
-    const bin = await entityTransactionManager.findOne(Bin, {
-      where: {},
-    });
+    const binId = (await this.binRepository.query(
+      'SELECT b.id FROM bin b LEFT JOIN inventory i ON b.id = i."binId" GROUP BY b.id ORDER BY COALESCE(SUM(i.quantity), 0) asc, b.name ASC LIMIT 1',
+    )) as { id: number }[];
+    if (binId?.length === 0) {
+      throw new Error('No available bin');
+    }
+    const bin = await this.findOne(binId[0].id);
     if (!bin) {
       throw new Error('No available bin');
     }
-    this.logger.log('Found available bin...', bin);
     return bin;
   }
 

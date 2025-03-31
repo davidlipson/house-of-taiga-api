@@ -43,9 +43,10 @@ export class InventoryService {
           throw new Error('One or more tags not found');
         }
 
-        const assignedBin = await this.binService.assignBin(
-          transactionalEntityManager,
-        );
+        const assignedBin = await this.binService
+          .assignBin
+          // transactionalEntityManager,
+          ();
 
         this.logger.log('Bin assigned...', assignedBin);
 
