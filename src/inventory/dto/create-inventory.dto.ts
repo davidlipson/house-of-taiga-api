@@ -2,10 +2,11 @@ import {
   IsArray,
   IsNotEmpty,
   IsNumber,
-  IsOptional,
   IsString,
   Min,
+  IsOptional,
 } from 'class-validator';
+import { ColorDto } from './color.dto';
 
 export class CreateInventoryDto {
   @IsString()
@@ -16,18 +17,17 @@ export class CreateInventoryDto {
   @IsNotEmpty()
   brand: string;
 
-  @IsString()
+  @IsArray()
+  @IsString({ each: true })
+  tags: string[];
+
   @IsOptional()
-  colour?: string;
+  colour?: ColorDto;
 
   @IsNumber()
   @IsNotEmpty()
   @Min(0)
   cost: number;
-
-  @IsArray()
-  @IsString({ each: true })
-  tags: string[];
 
   @IsNumber()
   @IsNotEmpty()

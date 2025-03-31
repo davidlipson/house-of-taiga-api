@@ -34,7 +34,7 @@ export class InitialSchema1742617318632 implements MigrationInterface {
             "name" VARCHAR(30) NOT NULL,
             "brandId" INTEGER NOT NULL,
             "binId" INTEGER NOT NULL,
-            "colour" VARCHAR(30),
+            "colour" JSONB,
             "cost" FLOAT NOT NULL,
             "quantity" INTEGER NOT NULL,
             "fileUrl" VARCHAR(255),

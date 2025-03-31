@@ -11,6 +11,7 @@ import {
 import { Brand } from '../../brand/entities/brand.entity';
 import { Bin } from '../../bin/entities/bin.entity';
 import { Tag } from '../../tag/entities/tag.entity';
+import { ColorDto } from '../dto/color.dto';
 
 @Entity()
 // unique name per brand
@@ -30,8 +31,8 @@ export class Inventory {
   @JoinColumn({ name: 'binId' })
   bin: Bin;
 
-  @Column({ type: 'varchar', length: 30, nullable: true })
-  colour?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  colour?: ColorDto;
 
   @Column({ type: 'float' })
   cost: number;

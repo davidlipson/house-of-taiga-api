@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CreateInventoryDto } from './dto/create-inventory.dto';
-import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { DataSource, In, Like, Repository } from 'typeorm';
 import { Inventory } from './entities/inventory.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -97,6 +96,9 @@ export class InventoryService {
       where: {
         id: In(foundInventory.map((inventory) => inventory.id)),
       },
+      order: {
+        id: 'DESC',
+      },
     });
   }
 
@@ -107,47 +109,46 @@ export class InventoryService {
     });
   }
 
-  async update(id: number, updateInventoryDto: UpdateInventoryDto) {
-    // transaction
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
-      // remove associated brand and tags
-      const inventory = await this.inventoryRepository.findOne({
-        where: { id },
-        relations: ['brand', 'tags'],
-      });
-      if (!inventory) {
-        throw new Error('Inventory not found');
-      }
+  async update(id: number, updateInventoryDto: CreateInventoryDto) {
+    await this.inventoryRepository.manager.transaction(
+      async (transactionalEntityManager) => {
+        const existingInventory = await this.findOne(id);
 
-      // update inventory
-      inventory.name = updateInventoryDto.name || inventory.name;
-      inventory.brand = await this.brandService.create({
-        name: updateInventoryDto.brand,
-      });
-      inventory.colour = updateInventoryDto.colour || inventory.colour;
-      inventory.cost = updateInventoryDto.cost || inventory.cost;
-      inventory.quantity = updateInventoryDto.quantity || inventory.quantity;
+        if (!existingInventory) {
+          throw new Error('Inventory not found');
+        }
 
-      // should save to inventory_tag table
-      inventory.tags = await Promise.all(
-        updateInventoryDto.tags.map((tag) =>
-          this.tagService.create({ name: tag }),
-        ),
-      );
+        const brand = await this.brandService.create(
+          { name: updateInventoryDto.brand },
+          transactionalEntityManager,
+        );
 
-      await queryRunner.manager.save(inventory);
-      await queryRunner.commitTransaction();
+        this.logger.log('Brand created or found...', brand);
 
-      return inventory;
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
+        const tags = await Promise.all(
+          updateInventoryDto.tags.map((tag) =>
+            this.tagService.create({ name: tag }, transactionalEntityManager),
+          ),
+        );
+
+        this.logger.log('Tags created or found...', tags);
+
+        if (tags.length !== updateInventoryDto.tags.length) {
+          throw new Error('One or more tags not found');
+        }
+
+        existingInventory.name = updateInventoryDto.name;
+        existingInventory.brand = brand;
+        existingInventory.colour = updateInventoryDto.colour;
+        existingInventory.cost = updateInventoryDto.cost;
+        existingInventory.quantity = updateInventoryDto.quantity;
+        existingInventory.tags = tags;
+
+        this.logger.log('Inventory updated...', existingInventory);
+
+        return await transactionalEntityManager.save(existingInventory);
+      },
+    );
   }
 
   remove(id: number) {

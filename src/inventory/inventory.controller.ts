@@ -3,14 +3,13 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   Query,
+  Put,
 } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { CreateInventoryDto } from './dto/create-inventory.dto';
-import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { FindAllInventoryDto } from './dto/find-all-inventory.dto';
 
 @Controller('inventory')
@@ -32,16 +31,17 @@ export class InventoryController {
     return this.inventoryService.findOne(+id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   update(
     @Param('id') id: string,
-    @Body() updateInventoryDto: UpdateInventoryDto,
+    @Body() updateInventoryDto: CreateInventoryDto,
   ) {
     return this.inventoryService.update(+id, updateInventoryDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
+    console.log(id);
     return this.inventoryService.remove(+id);
   }
 }
