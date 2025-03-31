@@ -1,12 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CreateInventoryDto } from './dto/create-inventory.dto';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Like, Repository } from 'typeorm';
 import { Inventory } from './entities/inventory.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BrandService } from 'src/brand/brand.service';
 import { TagService } from 'src/tag/tag.service';
 import { BinService } from 'src/bin/bin.service';
+import { FindAllInventoryDto } from './dto/find-all-inventory.dto';
 @Injectable()
 export class InventoryService {
   private readonly logger = new Logger(InventoryService.name);
@@ -65,12 +66,45 @@ export class InventoryService {
     );
   }
 
-  findAll() {
-    return this.inventoryRepository.find();
+  async findAll(findAllDto: FindAllInventoryDto) {
+    const tags = findAllDto['tags[]' as keyof FindAllInventoryDto] as
+      | string[]
+      | string;
+
+    const tagCondition = {
+      tags: {
+        name: tags ? (Array.isArray(tags) ? In(tags) : tags) : undefined,
+      },
+    };
+
+    const foundInventory = await this.inventoryRepository.find({
+      where: [
+        {
+          name: findAllDto.query ? Like(`%${findAllDto.query}%`) : undefined,
+          ...tagCondition,
+        },
+        {
+          ...tagCondition,
+          brand: {
+            name: findAllDto.query ? Like(`%${findAllDto.query}%`) : undefined,
+          },
+        },
+      ],
+    });
+
+    return await this.inventoryRepository.find({
+      relations: ['brand', 'tags', 'bin'],
+      where: {
+        id: In(foundInventory.map((inventory) => inventory.id)),
+      },
+    });
   }
 
   findOne(id: number) {
-    return this.inventoryRepository.findOne({ where: { id } });
+    return this.inventoryRepository.findOne({
+      where: { id },
+      relations: ['brand', 'tags', 'bin'],
+    });
   }
 
   async update(id: number, updateInventoryDto: UpdateInventoryDto) {
